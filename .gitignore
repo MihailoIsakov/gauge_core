@@ -1,0 +1,5 @@
+data/
+*.swp
+.cache/
+__pycache__/
+gauge_core.egg-info/
