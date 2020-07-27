@@ -166,13 +166,20 @@ def tree_layout(G):
     return pos
 
 
-def build_hierarchy(clusterer):
+def build_hierarchy(clusterer, min_cluster_size=1000):
     """
     Returns a dictionary with a single field nodes, which contains 
     a list of node objects. Each element of the list contains the fields
     x, y (positions constructed by the layout mechanism), node index/name,
     size, epsilon (same as y for now), parent (index of parent node), 
     children (0 to 2 indexes of children nodes).
+
+    Args:
+        clusterer: an HDBSCAN object
+
+    Returns: 
+        a dictionary where with a single 'nodes' key, which holds a list of 
+        dictionaries, each describing a cluster using several features. 
     """
     ct = clusterer.condensed_tree_
     G  = ct.to_networkx()
@@ -180,7 +187,7 @@ def build_hierarchy(clusterer):
     sys.setrecursionlimit(10000)
     split_multidegree_nodes(G)
 
-    CG = build_condensed_graph(G, 1., 1000)
+    CG = build_condensed_graph(G, 1., min_cluster_size=min_cluster_size)
     coord = tree_layout(CG)
     sizes = dict(nx.get_node_attributes(CG, 'size').items())
 
