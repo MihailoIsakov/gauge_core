@@ -173,6 +173,7 @@ def tree_layout(G, min_yaxis_spacing=0.5):
             # Get children to assign their X's, and take their mean
             for child in children: 
                 pos, next_x = dfs_assignment(G, child, pos, next_x, min_yaxis_spacing=min_yaxis_spacing)
+            # x = np.sum([pos[child][0] * G.nodes[child]['size'] for child in children]) / np.sum([G.nodes[child]['size'] for child in children])
             x = np.mean([pos[child][0] for child in children])
 
         # Calculate Y position
