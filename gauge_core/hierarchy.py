@@ -128,9 +128,9 @@ def build_condensed_graph(G, min_epsilon, min_cluster_size, dont_merge=[]):
     return SG
 
 
-def tree_layout(G):
+def tree_layout(G, min_yaxis_spacing=0.5):
 
-    def dfs_assignment(G, node, pos, next_x): 
+    def dfs_assignment(G, node, pos, next_x, min_yaxis_spacing): 
         """
         Calculates the node's position and recursively calculates it's childrens positions.
         The y position is calculated from epsilon, while the x position is calculated by first
@@ -146,22 +146,28 @@ def tree_layout(G):
         else: 
             # Get children to assign their X's, and take their mean
             for child in children: 
-                pos, next_x = dfs_assignment(G, child, pos, next_x)
+                pos, next_x = dfs_assignment(G, child, pos, next_x, min_yaxis_spacing=min_yaxis_spacing)
             x = np.mean([pos[child][0] for child in children])
 
         # Calculate Y position
         if len(parent) == 1:
             y = 1 / G[parent[0]][node]['weight']
         else:
-            y = 9.758 
+            y = 12
 
-        pos[node] = (x, y)
+        pos[node] = [x, y]
+
+        # Space out nodes on y axis
+        if len(children) >= 1:
+            top_child = np.max([pos[child][1] for child in children])
+            if pos[node][1] - top_child < min_yaxis_spacing:
+                pos[node][1] = top_child + min_yaxis_spacing
 
         return pos, next_x
 
     root = [n for n, d in G.in_degree() if d==0][0]
     pos = {}
-    pos, _ = dfs_assignment(G, root, pos, 0)
+    pos, _ = dfs_assignment(G, root, pos, 0, min_yaxis_spacing=min_yaxis_spacing)
 
     return pos
 
