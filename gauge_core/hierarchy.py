@@ -1,6 +1,11 @@
+import os
 import sys
 import numpy as np
 import networkx as nx
+from joblib import Memory
+
+
+memory = Memory(os.path.join(os.path.dirname(__file__), ".cache"))
 
 
 new_node_idx = 0
@@ -83,6 +88,27 @@ def _populate_node_sizes(G, node):
     G.nodes[node]['size'] = size
 
     return size
+
+
+def _populate_users_and_apps(df, G, node):
+    """
+    Populates nodes in G with sets of users and apps that they contain.
+    """
+    children = list(G[node])
+    if len(children) == 0:
+        apps = set([df.iloc[node]['apps_short']])
+        users = set([df.iloc[node]['users']])
+    else: 
+        apps, users = set(), set()
+        for c in range(len(children)):
+            a, u = _populate_users_and_apps(df, G, children[c])
+            apps = apps.union(a)
+            users = users.union(u)
+        
+    G.nodes[node]['apps'] = apps
+    G.nodes[node]['users'] = users
+
+    return apps, users
 
 
 def _merge_chain_nodes(G, node, dont_merge=[]):
@@ -172,7 +198,8 @@ def tree_layout(G, min_yaxis_spacing=0.5):
     return pos
 
 
-def build_hierarchy(clusterer, min_cluster_size=1000):
+@memory.cache
+def build_hierarchy(df, clusterer, min_cluster_size=1000):
     """
     Returns a dictionary with a single field nodes, which contains 
     a list of node objects. Each element of the list contains the fields
@@ -193,6 +220,10 @@ def build_hierarchy(clusterer, min_cluster_size=1000):
     sys.setrecursionlimit(10000)
     split_multidegree_nodes(G)
 
+    # Populate users and apps in hierarchy
+    root = [n for n, d in G.in_degree() if d==0][0]
+    _populate_users_and_apps(df, G, root)
+
     CG = build_condensed_graph(G, 1., min_cluster_size=min_cluster_size)
     coord = tree_layout(CG)
     sizes = dict(nx.get_node_attributes(CG, 'size').items())
@@ -207,6 +238,8 @@ def build_hierarchy(clusterer, min_cluster_size=1000):
             "size"    : sizes[node],
             "parent"  : str(list(CG.predecessors(node))[0]) if len(list(CG.predecessors(node))) > 0 else None, 
             "children": list([str(x) for x in CG.successors(node)]),
+            "users"   : list(CG.nodes[node]['users']),
+            "apps"    : list(CG.nodes[node]['apps']),
         }
 
         hierarchy['nodes'].append(node_object)
@@ -214,10 +247,10 @@ def build_hierarchy(clusterer, min_cluster_size=1000):
     return hierarchy
 
 
-def build_nested_hierarchy(clusterer):
+def build_nested_hierarchy(df, clusterer, min_cluster_size=1000):
     """
     """
-    tree_list = build_hierarchy(clusterer)['nodes']
+    tree_list = build_hierarchy(df, clusterer, min_cluster_size)['nodes']
     root_index = [node['index'] for node in tree_list if node['parent'] is None][0]
 
     def nest(index):
