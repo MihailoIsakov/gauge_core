@@ -5,7 +5,8 @@ Functions for building the test set given the dataset DataFrame,
 from collections import Counter
 import numpy as np
 import sklearn
-from sklearn.model_selection import LeaveOneGroupOut
+from sklearn.model_selection import LeaveOneGroupOut, GroupKFold
+from sklearn.utils.validation import check_array
 
 from gauge_core import clustering 
 
@@ -137,9 +138,62 @@ class AppFold(LeaveOneGroupOut):
             yield train_index, test_index
 
 
+class DBSCANFold(GroupKFold):
+
+    def _iter_test_indices(self, X, y, groups):
+        if groups is None:
+            raise ValueError("The 'groups' parameter should not be None.")
+        groups = check_array(groups, ensure_2d=False, dtype=None)
+
+        unique_groups, groups = np.unique(groups, return_inverse=True)
+        n_groups = len(unique_groups)
+
+        if self.n_splits > n_groups:
+            raise ValueError("Cannot have number of splits n_splits=%d greater"
+                             " than the number of groups: %d."
+                             % (self.n_splits, n_groups))
+
+        # Weight groups by their number of occurrences
+        n_samples_per_group = np.bincount(groups)
+
+        # Distribute the most frequent groups first
+        indices = np.argsort(n_samples_per_group)[::-1]
+        n_samples_per_group = n_samples_per_group[indices]
+
+        # Total weight of each fold
+        n_samples_per_fold = np.zeros(self.n_splits)
+
+        # Mapping from group index to fold index
+        group_to_fold = np.zeros(len(unique_groups))
+
+        # Distribute samples by adding the largest weight to the lightest fold
+        for group_index, weight in enumerate(n_samples_per_group):
+            lightest_fold = np.argmin(n_samples_per_fold)
+            n_samples_per_fold[lightest_fold] += weight
+            group_to_fold[indices[group_index]] = lightest_fold
+
+        indices = group_to_fold[groups]
+
+        for f in range(self.n_splits):
+            yield np.where(indices == f)[0]
+
+    def split(self, X, y=None, clusterer=None, epsilon=1):
+        if clusterer is None:
+            raise RuntimeError("Clusterer not provided")
+        groups = np.zeros(len(X))
+
+        clusters = clustering.HDBSCAN_to_DBSCAN(clusterer, epsilon=epsilon)
+        groups = np.zeros(len(X))
+
+        for idx, c in enumerate(clusters):
+            groups[list(c)] = idx
+
+        return super().split(X, y, groups)
+
+
 if __name__ == "__main__":
     import gauge_core
-    df, _ = gauge_core.dataset.default_dataset()
+    df, clusterer = gauge_core.dataset.default_dataset()
 
     top_apps = Counter(df.apps_short).most_common()[:5]
     print(top_apps)
@@ -150,3 +204,8 @@ if __name__ == "__main__":
         # Make sure that only a single app exists in the test set 
         print(set(df.iloc[test_index].apps_short))
         
+    fold = DBSCANFold(n_splits=5)
+    for train_index, test_index in fold.split(df, clusterer=clusterer):
+        print(len(train_index), len(test_index))
+        # Make sure that only a single app exists in the test set 
+        print(set(df.iloc[test_index].apps_short))
