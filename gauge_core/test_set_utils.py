@@ -2,10 +2,12 @@
 Functions for building the test set given the dataset DataFrame, 
 (and possibly the clusterer)
 """
+from collections import Counter
 import numpy as np
 import sklearn
+from sklearn.model_selection import LeaveOneGroupOut
 
-from . import clustering 
+from gauge_core import clustering 
 
 
 def random_split(df, y_column, keep_columns=None, test_size=0.2):
@@ -103,3 +105,48 @@ def DBSCAN_based_split(df, clusterer, epsilon, y_column, keep_columns=None, test
 
     return X_train, X_test, y_train, y_test 
 
+
+class AppFold(LeaveOneGroupOut):
+    """ 
+    AppFold cross-validator 
+
+    Provides train/test indices to split data in train/test sets. Each
+    set of jobs belonging to one of the top n applications is used once
+    as the test set (singleton) while the remaining samples form the 
+    training set. Jobs that do not belong to the n most numerous 
+    applications are never included in the test set.
+    """
+    def __init__(self, n_splits):
+        self.n_splits = n_splits
+
+    def get_n_splits(self, X=None, y=None):
+        return self.n_splits
+
+    def split(self, X, y=None):
+        """
+        Creates the groups based on the DataFrame X and the n_splits parameter,
+        then just calls the base class implementation.
+        """
+        top_apps = Counter(X.apps_short).most_common()[:self.n_splits]
+        top_apps = [ta[0] for ta in top_apps]
+
+        for idx, app in enumerate(top_apps):
+            train_index = np.flatnonzero(X.apps_short != app)
+            test_index  = np.flatnonzero(X.apps_short == app)
+
+            yield train_index, test_index
+
+
+if __name__ == "__main__":
+    import gauge_core
+    df, _ = gauge_core.dataset.default_dataset()
+
+    top_apps = Counter(df.apps_short).most_common()[:5]
+    print(top_apps)
+
+    fold = AppFold(n_splits=5)
+    for train_index, test_index in fold.split(df):
+        print(len(train_index), len(test_index))
+        # Make sure that only a single app exists in the test set 
+        print(set(df.iloc[test_index].apps_short))
+        
