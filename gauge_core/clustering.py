@@ -77,7 +77,7 @@ def HDBSCAN_to_DBSCAN(clusterer, epsilon):
     clusters = forest_to_tree_nodes(G)
 
     # Since the graph contains some branch nodes, and not just leaf nodes, remove those branch nodes
-    branch_nodes = range(len(clusterer.labels_) + 1, np.max(G.nodes()) + 1)
+    branch_nodes = range(len(clusterer.labels_), np.max(G.nodes()) + 1)
     for idx in range(len(clusters)):
         clusters[idx] = clusters[idx].difference(branch_nodes)
 
