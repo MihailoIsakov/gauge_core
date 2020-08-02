@@ -154,7 +154,7 @@ def build_condensed_graph(G, min_epsilon, min_cluster_size, dont_merge=[]):
     return SG
 
 
-def tree_layout(G, min_yaxis_spacing=0.5):
+def tree_layout(G, min_yaxis_spacing=0.5, layout_type='middle'):
 
     def dfs_assignment(G, node, pos, next_x, min_yaxis_spacing): 
         """
@@ -170,11 +170,22 @@ def tree_layout(G, min_yaxis_spacing=0.5):
             x = next_x
             next_x += 1
         else: 
+            # Sort children by size first
+            def sortby(child):
+                return G.nodes[child]['size']
+            
+            children.sort(key=sortby)
+
             # Get children to assign their X's, and take their mean
             for child in children: 
                 pos, next_x = dfs_assignment(G, child, pos, next_x, min_yaxis_spacing=min_yaxis_spacing)
-            # x = np.sum([pos[child][0] * G.nodes[child]['size'] for child in children]) / np.sum([G.nodes[child]['size'] for child in children])
-            x = np.mean([pos[child][0] for child in children])
+
+            if layout_type == 'middle':
+                x = np.mean([pos[child][0] for child in children])
+            elif layout_type == 'average': 
+                x = np.sum([pos[child][0] * G.nodes[child]['size'] for child in children]) / np.sum([G.nodes[child]['size'] for child in children])
+            else:
+                raise RuntimeError("tree_layout received an unsupported layout type")
 
         # Calculate Y position
         if len(parent) == 1:
@@ -200,7 +211,7 @@ def tree_layout(G, min_yaxis_spacing=0.5):
 
 
 @memory.cache
-def build_hierarchy(df, clusterer, min_cluster_size=1000):
+def build_hierarchy(df, clusterer, min_cluster_size=1000, tree_layout='middle'):
     """
     Returns a dictionary with a single field nodes, which contains 
     a list of node objects. Each element of the list contains the fields
@@ -226,7 +237,7 @@ def build_hierarchy(df, clusterer, min_cluster_size=1000):
     _populate_users_and_apps(df, G, root)
 
     CG = build_condensed_graph(G, 1., min_cluster_size=min_cluster_size)
-    coord = tree_layout(CG)
+    coord = tree_layout(CG, tree_layout=tree_layout)
     sizes = dict(nx.get_node_attributes(CG, 'size').items())
 
     hierarchy = {"nodes": []}
