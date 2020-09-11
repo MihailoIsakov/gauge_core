@@ -69,7 +69,7 @@ def remove_unimporant_features(df, keep_timestamps=True):
     for label in drop_labels:
         try: 
             df = df.drop(columns=label)
-        except:
+        except:  # noqa: E722
             logging.warning("Cannot drop nonexistant column {}".format(label))
 
     return df
@@ -311,16 +311,16 @@ def convert_POSIX_features_to_percentages(df, remove_dual=True):
     df['POSIX_total_files']    = total_files
 
     try:
-        df['POSIX_BYTES_READ_PERC'      ] = df.POSIX_BYTES_READ       / total_bytes
-        df['POSIX_BYTES_WRITTEN_PERC'   ] = df.POSIX_BYTES_WRITTEN    / total_bytes
-        df['POSIX_unique_bytes_perc'    ] = df.POSIX_unique_bytes     / total_bytes
-        df['POSIX_shared_bytes_perc'    ] = df.POSIX_shared_bytes     / total_bytes
-        df['POSIX_read_only_bytes_perc' ] = df.POSIX_read_only_bytes  / total_bytes
-        df['POSIX_read_write_bytes_perc'] = df.POSIX_read_write_bytes / total_bytes
-        df['POSIX_write_only_bytes_perc'] = df.POSIX_write_only_bytes / total_bytes
+        df['POSIX_BYTES_READ_PERC'      ] = df.POSIX_BYTES_READ       / total_bytes  # noqa: E202
+        df['POSIX_BYTES_WRITTEN_PERC'   ] = df.POSIX_BYTES_WRITTEN    / total_bytes  # noqa: E202
+        df['POSIX_unique_bytes_perc'    ] = df.POSIX_unique_bytes     / total_bytes  # noqa: E202
+        df['POSIX_shared_bytes_perc'    ] = df.POSIX_shared_bytes     / total_bytes  # noqa: E202
+        df['POSIX_read_only_bytes_perc' ] = df.POSIX_read_only_bytes  / total_bytes  # noqa: E202
+        df['POSIX_read_write_bytes_perc'] = df.POSIX_read_write_bytes / total_bytes  # noqa: E202
+        df['POSIX_write_only_bytes_perc'] = df.POSIX_write_only_bytes / total_bytes  # noqa: E202
         df = df.drop(columns=["POSIX_BYTES_READ",      "POSIX_BYTES_WRITTEN",    "POSIX_unique_bytes", "POSIX_shared_bytes", 
                               "POSIX_read_only_bytes", "POSIX_read_write_bytes", "POSIX_write_only_bytes"])
-    except:
+    except:  # noqa: E722
         logging.error("Failed to normalize one of the features in [POSIX_BYTES_READ, POSIX_BYTES_WRITTEN, unique_bytes, shared_bytes, read_only_bytes, read_write_bytes, write_only_bytes") 
 
 
@@ -331,7 +331,7 @@ def convert_POSIX_features_to_percentages(df, remove_dual=True):
         df['POSIX_read_write_files_perc'] = df.POSIX_read_write_files / df.POSIX_total_files
         df['POSIX_write_only_files_perc'] = df.POSIX_write_only_files / df.POSIX_total_files
         df = df.drop(columns=['POSIX_unique_files', 'POSIX_shared_files', 'POSIX_read_only_files', 'POSIX_read_write_files', 'POSIX_write_only_files'])
-    except:
+    except:  # noqa: E722
         logging.error("Failed to normalize one of the *_files features")
 
 
@@ -346,7 +346,7 @@ def convert_POSIX_features_to_percentages(df, remove_dual=True):
         df['POSIX_FILE_NOT_ALIGNED_PERC'] = df.POSIX_FILE_NOT_ALIGNED / total_accesses
         df['POSIX_MEM_NOT_ALIGNED_PERC']  = df.POSIX_MEM_NOT_ALIGNED  / total_accesses
         df = df.drop(columns=["POSIX_READS", "POSIX_WRITES", "POSIX_RW_SWITCHES", "POSIX_SEQ_WRITES", "POSIX_SEQ_READS", "POSIX_CONSEC_READS", "POSIX_CONSEC_WRITES", "POSIX_FILE_NOT_ALIGNED", "POSIX_MEM_NOT_ALIGNED"])
-    except:
+    except:  # noqa: E722
         logging.error("Failed to normalize one of the features in [POSIX_READS, POSIX_WRITES, POSIX_SEQ_WRITES, POSIX_SEQ_READS, POSIX_CONSEC_READS, POSIX_CONSEC_WRITES, POSIX_FILE_NOT_ALIGNED_PERC, POSIX_MEM_NOT_ALIGNED_PERC]") 
 
 
@@ -360,27 +360,27 @@ def convert_POSIX_features_to_percentages(df, remove_dual=True):
             logging.warning("POSIX_SIZE_WRITE* + POSIX_SIZE_READ* columns do not add up to POSIX_total_accesses")
 
 
-        df['POSIX_SIZE_READ_0_100_PERC'    ] = df.POSIX_SIZE_READ_0_100     / total_accesses
-        df['POSIX_SIZE_READ_100_1K_PERC'   ] = df.POSIX_SIZE_READ_100_1K    / total_accesses 
-        df['POSIX_SIZE_READ_1K_10K_PERC'   ] = df.POSIX_SIZE_READ_1K_10K    / total_accesses 
-        df['POSIX_SIZE_READ_10K_100K_PERC' ] = df.POSIX_SIZE_READ_10K_100K  / total_accesses 
-        df['POSIX_SIZE_READ_100K_1M_PERC'  ] = df.POSIX_SIZE_READ_100K_1M   / total_accesses 
-        df['POSIX_SIZE_READ_1M_4M_PERC'    ] = df.POSIX_SIZE_READ_1M_4M     / total_accesses 
-        df['POSIX_SIZE_READ_4M_10M_PERC'   ] = df.POSIX_SIZE_READ_4M_10M    / total_accesses 
-        df['POSIX_SIZE_READ_10M_100M_PERC' ] = df.POSIX_SIZE_READ_10M_100M  / total_accesses 
-        df['POSIX_SIZE_READ_100M_1G_PERC'  ] = df.POSIX_SIZE_READ_100M_1G   / total_accesses 
-        df['POSIX_SIZE_READ_1G_PLUS_PERC'  ] = df.POSIX_SIZE_READ_1G_PLUS   / total_accesses 
-
-        df['POSIX_SIZE_WRITE_0_100_PERC'   ] = df.POSIX_SIZE_WRITE_0_100    / total_accesses
-        df['POSIX_SIZE_WRITE_100_1K_PERC'  ] = df.POSIX_SIZE_WRITE_100_1K   / total_accesses
-        df['POSIX_SIZE_WRITE_1K_10K_PERC'  ] = df.POSIX_SIZE_WRITE_1K_10K   / total_accesses
-        df['POSIX_SIZE_WRITE_10K_100K_PERC'] = df.POSIX_SIZE_WRITE_10K_100K / total_accesses
-        df['POSIX_SIZE_WRITE_100K_1M_PERC' ] = df.POSIX_SIZE_WRITE_100K_1M  / total_accesses
-        df['POSIX_SIZE_WRITE_1M_4M_PERC'   ] = df.POSIX_SIZE_WRITE_1M_4M    / total_accesses
-        df['POSIX_SIZE_WRITE_4M_10M_PERC'  ] = df.POSIX_SIZE_WRITE_4M_10M   / total_accesses
-        df['POSIX_SIZE_WRITE_10M_100M_PERC'] = df.POSIX_SIZE_WRITE_10M_100M / total_accesses
-        df['POSIX_SIZE_WRITE_100M_1G_PERC' ] = df.POSIX_SIZE_WRITE_100M_1G  / total_accesses
-        df['POSIX_SIZE_WRITE_1G_PLUS_PERC' ] = df.POSIX_SIZE_WRITE_1G_PLUS  / total_accesses
+        df['POSIX_SIZE_READ_1_100_PERC'    ] = df.POSIX_SIZE_READ_0_100     / total_accesses # noqa: E202
+        df['POSIX_SIZE_READ_100_1K_PERC'   ] = df.POSIX_SIZE_READ_100_1K    / total_accesses # noqa: E202
+        df['POSIX_SIZE_READ_1K_10K_PERC'   ] = df.POSIX_SIZE_READ_1K_10K    / total_accesses # noqa: E202
+        df['POSIX_SIZE_READ_10K_100K_PERC' ] = df.POSIX_SIZE_READ_10K_100K  / total_accesses # noqa: E202
+        df['POSIX_SIZE_READ_100K_1M_PERC'  ] = df.POSIX_SIZE_READ_100K_1M   / total_accesses # noqa: E202
+        df['POSIX_SIZE_READ_1M_4M_PERC'    ] = df.POSIX_SIZE_READ_1M_4M     / total_accesses # noqa: E202
+        df['POSIX_SIZE_READ_4M_10M_PERC'   ] = df.POSIX_SIZE_READ_4M_10M    / total_accesses # noqa: E202
+        df['POSIX_SIZE_READ_10M_100M_PERC' ] = df.POSIX_SIZE_READ_10M_100M  / total_accesses # noqa: E202
+        df['POSIX_SIZE_READ_100M_1G_PERC'  ] = df.POSIX_SIZE_READ_100M_1G   / total_accesses # noqa: E202
+        df['POSIX_SIZE_READ_1G_PLUS_PERC'  ] = df.POSIX_SIZE_READ_1G_PLUS   / total_accesses # noqa: E202
+                                                                                             # noqa: E202
+        df['POSIX_SIZE_WRITE_0_100_PERC'   ] = df.POSIX_SIZE_WRITE_0_100    / total_accesses # noqa: E202
+        df['POSIX_SIZE_WRITE_100_1K_PERC'  ] = df.POSIX_SIZE_WRITE_100_1K   / total_accesses # noqa: E202
+        df['POSIX_SIZE_WRITE_1K_10K_PERC'  ] = df.POSIX_SIZE_WRITE_1K_10K   / total_accesses # noqa: E202
+        df['POSIX_SIZE_WRITE_10K_100K_PERC'] = df.POSIX_SIZE_WRITE_10K_100K / total_accesses # noqa: E202
+        df['POSIX_SIZE_WRITE_100K_1M_PERC' ] = df.POSIX_SIZE_WRITE_100K_1M  / total_accesses # noqa: E202
+        df['POSIX_SIZE_WRITE_1M_4M_PERC'   ] = df.POSIX_SIZE_WRITE_1M_4M    / total_accesses # noqa: E202
+        df['POSIX_SIZE_WRITE_4M_10M_PERC'  ] = df.POSIX_SIZE_WRITE_4M_10M   / total_accesses # noqa: E202
+        df['POSIX_SIZE_WRITE_10M_100M_PERC'] = df.POSIX_SIZE_WRITE_10M_100M / total_accesses # noqa: E202
+        df['POSIX_SIZE_WRITE_100M_1G_PERC' ] = df.POSIX_SIZE_WRITE_100M_1G  / total_accesses # noqa: E202
+        df['POSIX_SIZE_WRITE_1G_PLUS_PERC' ] = df.POSIX_SIZE_WRITE_1G_PLUS  / total_accesses # noqa: E202
 
         drop_columns = ["POSIX_SIZE_READ_0_100",   "POSIX_SIZE_READ_100_1K", "POSIX_SIZE_READ_1K_10K", "POSIX_SIZE_READ_10K_100K",
                         "POSIX_SIZE_READ_100K_1M", "POSIX_SIZE_READ_1M_4M", "POSIX_SIZE_READ_4M_10M", "POSIX_SIZE_READ_10M_100M",
@@ -390,7 +390,7 @@ def convert_POSIX_features_to_percentages(df, remove_dual=True):
                         "POSIX_SIZE_WRITE_100M_1G", "POSIX_SIZE_WRITE_1G_PLUS"]
 
         df = df.drop(columns=drop_columns)
-    except:
+    except:  # noqa: E722
         logging.warning("Failed to normalize POSIX_SIZE_*") 
         
 
@@ -407,21 +407,21 @@ def convert_POSIX_features_to_percentages(df, remove_dual=True):
         logging.info("Access 4 %: max={}, mean={}, median={}".format(np.max(df.POSIX_ACCESS4_COUNT_PERC), np.mean(df.POSIX_ACCESS4_COUNT_PERC), np.median(df.POSIX_ACCESS4_COUNT_PERC)))
 
         df = df.drop(columns=['POSIX_ACCESS1_COUNT', 'POSIX_ACCESS2_COUNT', 'POSIX_ACCESS3_COUNT', 'POSIX_ACCESS4_COUNT'])
-    except: 
+    except:  # noqa: E722
         logging.warning("Failed to normalize POSIX_ACCESS[1-4]_COUNT") 
 
 
     try: 
-        df['POSIX_F_READ_DELTA_PERC'       ] = df['POSIX_F_READ_DELTA'       ] / df.runtime 
-        df['POSIX_F_WRITE_DELTA_PERC'      ] = df['POSIX_F_WRITE_DELTA'      ] / df.runtime
-        df['POSIX_F_CLOSE_DELTA_PERC'      ] = df['POSIX_F_CLOSE_DELTA'      ] / df.runtime
-        df['POSIX_F_OPEN_DELTA_PERC'       ] = df['POSIX_F_OPEN_DELTA'       ] / df.runtime
+        df['POSIX_F_READ_DELTA_PERC'       ] = df['POSIX_F_READ_DELTA'       ] / df.runtime  # noqa: E202 
+        df['POSIX_F_WRITE_DELTA_PERC'      ] = df['POSIX_F_WRITE_DELTA'      ] / df.runtime  # noqa: E202
+        df['POSIX_F_CLOSE_DELTA_PERC'      ] = df['POSIX_F_CLOSE_DELTA'      ] / df.runtime  # noqa: E202
+        df['POSIX_F_OPEN_DELTA_PERC'       ] = df['POSIX_F_OPEN_DELTA'       ] / df.runtime  # noqa: E202
 
         # df["POSIX_F_READ_TIME_PERC"        ] = df["POSIX_F_READ_TIME"        ] / df.runtime
         # df["POSIX_F_WRITE_TIME_PERC"       ] = df["POSIX_F_WRITE_TIME"       ] / df.runtime
         # df["POSIX_F_META_TIME_PERC"        ] = df["POSIX_F_META_TIME"        ] / df.runtime
-        df["POSIX_F_MAX_READ_TIME_PERC"    ] = df["POSIX_F_MAX_READ_TIME"    ] / df.runtime
-        df["POSIX_F_MAX_WRITE_TIME_PERC"   ] = df["POSIX_F_MAX_WRITE_TIME"   ] / df.runtime
+        df["POSIX_F_MAX_READ_TIME_PERC"    ] = df["POSIX_F_MAX_READ_TIME"    ] / df.runtime  # noqa: E202
+        df["POSIX_F_MAX_WRITE_TIME_PERC"   ] = df["POSIX_F_MAX_WRITE_TIME"   ] / df.runtime  # noqa: E202
 
         keep = set(['POSIX_F_READ_DELTA_PERC', 'POSIX_F_WRITE_DELTA_PERC', 'POSIX_F_CLOSE_DELTA_PERC', 'POSIX_F_OPEN_DELTA_PERC', 
                     # "POSIX_F_READ_TIME_PERC", "POSIX_F_WRITE_TIME_PERC", "POSIX_F_META_TIME_PERC", 
@@ -431,7 +431,7 @@ def convert_POSIX_features_to_percentages(df, remove_dual=True):
 
         drop = set([x for x in df.columns if "TIME" in x or "DELTA" in x]).difference(keep)
         df = df.drop(columns=drop)
-    except:
+    except:  # noqa: E722
         logging.warning("Failed to normalize DELTA features: ")
 
     # In case of division by zero, we'll get NaN. We convert those to zeros.
@@ -539,7 +539,7 @@ def sanitize(df, anonymize=True):
                           'POSIX_FASTEST_RANK',       'POSIX_FDSYNCS',      'POSIX_SLOWEST_RANK_BYTES'])
 
     # Remove features with a lot of zeros, and any jobs with zeros after that
-    logging.warning(f"About to remove jobs with subzero values. Current jobs: {df.shape[0]}")
+    logging.warning(f"About to remove jobs with subzero values. Current jobs: {df.shape[0]}")  # noqa: E999
     df = remove_subzero_features_and_jobs(df) 
     logging.warning(f"Removed subzero jobs. Current jobs: {df.shape[0]}")
 
