@@ -478,7 +478,23 @@ def whiten_dataset(df, add_min=1e-5):
     return df
 
 
-def sanitize(df): 
+def anonymize_dataset(df):
+    """
+    1-1 remaps real user and application names to 'user_X' and 'app_x'
+    """
+    user_map      = {user: "user_{}".format(idx) for idx, user in enumerate(set(df.users))}
+    app_map       = {app: "app_{}".format(idx)   for idx, app  in enumerate(set(df.apps))}        # noqa: E272
+    appshort_map  = {app: "app_{}".format(idx)   for idx, app  in enumerate(set(df.apps_short))}  # noqa: E272
+
+    df.users      = df.users.map(user_map)
+    df.apps       = df.apps.map(app_map)
+    df.apps_short = df.apps_short.map(appshort_map)
+    df.filename   = "" 
+
+    return df
+
+
+def sanitize(df, anonymize=True): 
     """
     Sanitize the dataset: 
         1. Remove unimportant features
@@ -545,6 +561,11 @@ def sanitize(df):
     # Convert some of the POSIX features to percentages
     df = convert_POSIX_features_to_percentages(df)
 
+    # Anonymize the dataset
+    if anonymize:
+        logging.warning("Anonymizing users and applications")
+        df = anonymize_dataset(df)
+
     # Finally, let's cut down the size of the dataset in order to simplify clustering
     jobs_larger_than_100MB = df.POSIX_total_bytes >= 100 * 1024**2
 
@@ -553,7 +574,7 @@ def sanitize(df):
 
 
 @memory.cache
-def default_dataset(paths=None):
+def default_dataset(paths=None, anonymize=True):
     """
     A 'good', cached run of the whole pipeline on four years of data.
     """
@@ -561,7 +582,7 @@ def default_dataset(paths=None):
         paths = glob.glob(os.path.join(os.path.dirname(__file__), "../data/*"))
 
     df = load(paths)
-    df = sanitize(df)
+    df = sanitize(df, anonymize=anonymize)
     df = log_scale_dataset(df)
 
     # Build the clusterer
