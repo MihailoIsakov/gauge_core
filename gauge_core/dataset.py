@@ -489,7 +489,8 @@ def anonymize_dataset(df):
     df.users      = df.users.map(user_map)
     df.apps       = df.apps.map(app_map)
     df.apps_short = df.apps_short.map(appshort_map)
-    df.filename   = "" 
+    df.filename   = "anon" 
+    df.exe        = "anon" 
 
     return df
 
@@ -574,16 +575,20 @@ def sanitize(df, anonymize=True):
 
 
 @memory.cache
-def default_dataset(paths=None, anonymize=True):
+def default_dataset(paths=None, anonymize=True, already_preprocessed=False):
     """
     A 'good', cached run of the whole pipeline on four years of data.
     """
     if paths is None and os.path.isdir(os.path.join(os.path.dirname(__file__), "../data/")):
         paths = glob.glob(os.path.join(os.path.dirname(__file__), "../data/*"))
 
-    df = load(paths)
-    df = sanitize(df, anonymize=anonymize)
-    df = log_scale_dataset(df)
+    if not already_preprocessed:
+        df = load(paths)
+        df = sanitize(df, anonymize=anonymize)
+        df = log_scale_dataset(df)
+    else:
+        df = load(paths)
+        df = df.drop(columns='index')
 
     # Build the clusterer
     log_columns = set([c for c in df.columns if 'perc' in c.lower() or 'log10' in c.lower()]).difference(["POSIX_LOG10_agg_perf_by_slowest"])
@@ -593,10 +598,18 @@ def default_dataset(paths=None, anonymize=True):
     return df, clusterer
 
 
+def export_dataset(df, path):
+    """
+    Saves the dataset to a file
+    """
+    df.to_csv(path, header=True, index=False, sep="|")
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.WARNING, format='%(levelname)-8s [%(filename)s:%(lineno)d] %(message)s')
 
-    df, clusterer = default_dataset(glob.glob("data/*darshan*.csv"))
+    df, clusterer = default_dataset(glob.glob("data/*darshan*.csv"), anonymize=True, already_preprocessed=False)
+    export_dataset(df, "data_preprocessed/anon_100MB.csv")
     
     import ipdb
     ipdb.set_trace()
