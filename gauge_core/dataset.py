@@ -695,7 +695,14 @@ def mpi_dataset(paths=None):
 
     # Build the clusterer
     log_columns = set([c for c in df.columns if 'perc' in c.lower() or 'log10' in c.lower()]).difference(["POSIX_LOG10_agg_perf_by_slowest"])
+    # Some percentage columns still have NaN values
     df[list(log_columns)] = df[list(log_columns)].fillna(0)    
+    # Rename apps and users - this is a temporary fix
+    df['apps']       = "app_X"
+    df['apps_short'] = "app_X"
+    df['users']      = "user_X"
+    # df.rename(columns={"USER_ID": "users", "EXE_NAME_GENID": "apps"}, inplace=True)
+    # df["apps_short"] = df["apps"]
 
     clusterer = hdbscan.HDBSCAN(min_samples=10, cluster_selection_epsilon=5, metric='manhattan', gen_min_span_tree=True)
     clusterer.fit(df[log_columns])
