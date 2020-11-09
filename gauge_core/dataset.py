@@ -12,7 +12,8 @@ from sklearn.preprocessing import StandardScaler
 memory = Memory(os.path.join(os.path.dirname(__file__), ".cache"))
 
 
-def load(paths):
+@memory.cache
+def load(paths, delimiter):
     """
     Load the CSV file at the provided path, and return a pandas DataFrame.
     """
@@ -21,7 +22,7 @@ def load(paths):
 
     df = pd.DataFrame()
     for path in paths: 
-        new_df = pd.read_csv(path, delimiter='|')
+        new_df = pd.read_csv(path, delimiter=delimiter)
         df = pd.concat([df, new_df])
 
     df = df.reset_index()
@@ -444,6 +445,112 @@ def convert_POSIX_features_to_percentages(df, remove_dual=True):
     return df
 
 
+def convert_MPIIO_features_to_percentages(df):
+    """
+    Similar to convert_POSIX_features_to_percentages, except on MPIIO
+
+    Question: since indep, coll, split and nb accesses add up to the histogram accesses, 
+    how should we normalize the four? 
+    """
+    df = df.copy()
+
+    # Remove total from columns 
+    df.rename(columns={c: c.replace("TOTAL_", "") for c in df.columns}, inplace=True)
+
+    #
+    # Non-MPIIO
+    # 
+    # Specific to the ANL CSVs
+    df["RAW_RUNTIME"] = df["RUN_TIME"]
+    df["RAW_NPROCS"]  = df["NPROCS"]
+
+    df.drop(columns=["RUN_TIME", "NPROCS"])
+
+    #
+    # Bytes features: one absolute, one relative
+    #
+    df["MPIIO_RAW_BYTES"]       = df["MPIIO_BYTES_READ" ] + df["MPIIO_BYTES_WRITTEN"]
+    df["MPIIO_BYTES_READ_PERC"] = df["MPIIO_BYTES_READ" ] / df["MPIIO_RAW_BYTES"    ]
+
+    #
+    # Four types of accesses: one absolute number of accesses, four relative, and for relative R/W breakdowns
+    #
+    df["MPIIO_RAW_ACCESSES"] = df["MPIIO_INDEP_READS"] + df["MPIIO_INDEP_WRITES"] \
+                             + df["MPIIO_COLL_READS" ] + df["MPIIO_COLL_WRITES" ] \
+                             + df["MPIIO_SPLIT_READS"] + df["MPIIO_SPLIT_WRITES"] \
+                             + df["MPIIO_NB_READS"   ] + df["MPIIO_NB_WRITES"   ]
+
+    df["MPIIO_INDEP_ACCESSES_PERC"] = (df["MPIIO_INDEP_READS"] + df["MPIIO_INDEP_WRITES"]) / df["MPIIO_RAW_ACCESSES"]
+    df["MPIIO_COLL_ACCESSES_PERC" ] = (df["MPIIO_COLL_READS" ] + df["MPIIO_COLL_WRITES" ]) / df["MPIIO_RAW_ACCESSES"]
+    df["MPIIO_SPLIT_ACCESSES_PERC"] = (df["MPIIO_SPLIT_READS"] + df["MPIIO_SPLIT_WRITES"]) / df["MPIIO_RAW_ACCESSES"]
+    df["MPIIO_NB_ACCESSES_PERC"   ] = (df["MPIIO_NB_READS"   ] + df["MPIIO_NB_WRITES"   ]) / df["MPIIO_RAW_ACCESSES"]
+
+    df["MPIIO_INDEP_READS_PERC"] = df["MPIIO_INDEP_READS"] / (df["MPIIO_INDEP_READS"] + df["MPIIO_INDEP_WRITES"])
+    df["MPIIO_COLL_READS_PERC" ] = df["MPIIO_COLL_READS" ] / (df["MPIIO_COLL_READS" ] + df["MPIIO_COLL_WRITES" ])
+    df["MPIIO_SPLIT_READS_PERC"] = df["MPIIO_SPLIT_READS"] / (df["MPIIO_SPLIT_READS"] + df["MPIIO_SPLIT_WRITES"])
+    df["MPIIO_NB_READS_PERC"   ] = df["MPIIO_NB_READS"   ] / (df["MPIIO_NB_READS"   ] + df["MPIIO_NB_WRITES"   ])
+
+    #
+    # General features that can't be made relative
+    #
+    df['MPIIO_RAW_INDEP_OPENS'   ] = df['MPIIO_INDEP_OPENS']
+    df['MPIIO_RAW_COLL_OPENS'    ] = df['MPIIO_COLL_OPENS' ]
+    df['MPIIO_RAW_SYNCS'         ] = df['MPIIO_SYNCS'      ]
+    df['MPIIO_RAW_HINTS'         ] = df['MPIIO_HINTS'      ]
+    df['MPIIO_RAW_VIEWS'         ] = df['MPIIO_VIEWS'      ]
+    df['MPIIO_RAW_MODE'          ] = df['MPIIO_MODE'       ]
+    df['MPIIO_RAW_RW_SWITCHES'   ] = df['MPIIO_RW_SWITCHES']
+
+    df.drop(columns=['MPIIO_INDEP_OPENS', 'MPIIO_COLL_OPENS', 'MPIIO_SYNCS', 
+                     'MPIIO_HINTS',       'MPIIO_VIEWS',      'MPIIO_MODE'])
+
+    #
+    # Relative histogram features
+    #
+    df.rename(columns={c: c.replace("READ_AGG_", "READ_") for c in df.columns if "READ_AGG" in c}, inplace=True)
+    df.rename(columns={c: c.replace("WRITE_AGG_", "WRITE_") for c in df.columns if "WRITE_AGG" in c}, inplace=True)
+
+    df['MPIIO_SIZE_READ_0_100_PERC'    ] = df['MPIIO_SIZE_READ_0_100'    ] / df["MPIIO_RAW_ACCESSES"]
+    df['MPIIO_SIZE_READ_100_1K_PERC'   ] = df['MPIIO_SIZE_READ_100_1K'   ] / df["MPIIO_RAW_ACCESSES"]
+    df['MPIIO_SIZE_READ_1K_10K_PERC'   ] = df['MPIIO_SIZE_READ_1K_10K'   ] / df["MPIIO_RAW_ACCESSES"]
+    df['MPIIO_SIZE_READ_10K_100K_PERC' ] = df['MPIIO_SIZE_READ_10K_100K' ] / df["MPIIO_RAW_ACCESSES"]
+    df['MPIIO_SIZE_READ_100K_1M_PERC'  ] = df['MPIIO_SIZE_READ_100K_1M'  ] / df["MPIIO_RAW_ACCESSES"]
+    df['MPIIO_SIZE_READ_1M_4M_PERC'    ] = df['MPIIO_SIZE_READ_1M_4M'    ] / df["MPIIO_RAW_ACCESSES"]
+    df['MPIIO_SIZE_READ_4M_10M_PERC'   ] = df['MPIIO_SIZE_READ_4M_10M'   ] / df["MPIIO_RAW_ACCESSES"]
+    df['MPIIO_SIZE_READ_10M_100M_PERC' ] = df['MPIIO_SIZE_READ_10M_100M' ] / df["MPIIO_RAW_ACCESSES"]
+    df['MPIIO_SIZE_READ_100M_1G_PERC'  ] = df['MPIIO_SIZE_READ_100M_1G'  ] / df["MPIIO_RAW_ACCESSES"]
+    df['MPIIO_SIZE_READ_1G_PLUS_PERC'  ] = df['MPIIO_SIZE_READ_1G_PLUS'  ] / df["MPIIO_RAW_ACCESSES"]
+    df['MPIIO_SIZE_WRITE_0_100_PERC'   ] = df['MPIIO_SIZE_WRITE_0_100'   ] / df["MPIIO_RAW_ACCESSES"]
+    df['MPIIO_SIZE_WRITE_100_1K_PERC'  ] = df['MPIIO_SIZE_WRITE_100_1K'  ] / df["MPIIO_RAW_ACCESSES"]
+    df['MPIIO_SIZE_WRITE_1K_10K_PERC'  ] = df['MPIIO_SIZE_WRITE_1K_10K'  ] / df["MPIIO_RAW_ACCESSES"]
+    df['MPIIO_SIZE_WRITE_10K_100K_PERC'] = df['MPIIO_SIZE_WRITE_10K_100K'] / df["MPIIO_RAW_ACCESSES"]
+    df['MPIIO_SIZE_WRITE_100K_1M_PERC' ] = df['MPIIO_SIZE_WRITE_100K_1M' ] / df["MPIIO_RAW_ACCESSES"]
+    df['MPIIO_SIZE_WRITE_1M_4M_PERC'   ] = df['MPIIO_SIZE_WRITE_1M_4M'   ] / df["MPIIO_RAW_ACCESSES"]
+    df['MPIIO_SIZE_WRITE_4M_10M_PERC'  ] = df['MPIIO_SIZE_WRITE_4M_10M'  ] / df["MPIIO_RAW_ACCESSES"]
+    df['MPIIO_SIZE_WRITE_10M_100M_PERC'] = df['MPIIO_SIZE_WRITE_10M_100M'] / df["MPIIO_RAW_ACCESSES"]
+    df['MPIIO_SIZE_WRITE_100M_1G_PERC' ] = df['MPIIO_SIZE_WRITE_100M_1G' ] / df["MPIIO_RAW_ACCESSES"]
+    df['MPIIO_SIZE_WRITE_1G_PLUS_PERC' ] = df['MPIIO_SIZE_WRITE_1G_PLUS' ] / df["MPIIO_RAW_ACCESSES"]
+
+    #
+    # In case some of the percentages were normalized using 0 values, set percentages to 0
+    #
+    df[[c for c in df.columns if "PERC" in c]].fillna(0, inplace=True)
+
+    return df
+
+
+def MPIIO_log_scale_dataset(df, add_small_value=1, set_NaNs_to=-10):
+    df = df.copy()
+
+    number_columns = get_number_columns(df)
+    columns = [x for x in number_columns if "RAW" in x]
+    
+    for c in columns: 
+        df[c.replace("RAW", "LOG10")] = np.log10(df[c] + add_small_value).fillna(value=set_NaNs_to)
+
+    return df
+
+
 def log_scale_dataset(df, add_small_value=1, set_NaNs_to=-10):
     """
     Takes the log10 of a DF + a small value (to prevent -infs), 
@@ -552,6 +659,9 @@ def sanitize(df):
     return df[jobs_larger_than_100MB]
 
 
+def MPI_sanitize(df):
+    pass
+
 @memory.cache
 def default_dataset(paths=None):
     """
@@ -572,10 +682,39 @@ def default_dataset(paths=None):
     return df, clusterer
 
 
+@memory.cache
+def mpi_dataset(paths=None):
+    if paths is None and os.path.isdir(os.path.join(os.path.dirname(__file__), "../data/")):
+        paths = glob.glob(os.path.join(os.path.dirname(__file__), "../data/*"))
+
+    df = load(paths, delimiter=',')
+    df = convert_MPIIO_features_to_percentages(df)
+    # Remove jobs without MPIIO
+    df = df[df.MPIIO_RAW_ACCESSES != 0]
+    df = MPIIO_log_scale_dataset(df)
+
+    # Build the clusterer
+    log_columns = set([c for c in df.columns if 'perc' in c.lower() or 'log10' in c.lower()]).difference(["POSIX_LOG10_agg_perf_by_slowest"])
+    df[list(log_columns)] = df[list(log_columns)].fillna(0)    
+
+    import ipdb
+    ipdb.set_trace()
+
+    clusterer = hdbscan.HDBSCAN(min_samples=10, cluster_selection_epsilon=5, metric='manhattan', gen_min_span_tree=True)
+    clusterer.fit(df[log_columns])
+
+    import ipdb
+    ipdb.set_trace()
+
+    return df, clusterer
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.WARNING, format='%(levelname)-8s [%(filename)s:%(lineno)d] %(message)s')
 
-    df, clusterer = default_dataset(glob.glob("data/*darshan*.csv"))
-    
-    import ipdb
-    ipdb.set_trace()
+    # paths = ["/home/mihailo/tmp/ANL_logs/ANL-ALCF-DARSHAN-THETA_20170701_20171231.csv", 
+             # "/home/mihailo/tmp/ANL_logs/ANL-ALCF-DARSHAN-THETA_20180101_20181231.csv", 
+             # "/home/mihailo/tmp/ANL_logs/ANL-ALCF-DARSHAN-THETA_20190101_20191231.csv", 
+             # "/home/mihailo/tmp/ANL_logs/ANL-ALCF-DARSHAN-THETA_20200101_20200531.csv"]
+
+    df, clusterer = mpi_dataset(glob.glob("/home/mihailo/tmp/ANL_logs/ANL-ALCF-DARSHAN-THETA_*.csv"))
