@@ -706,9 +706,13 @@ def mpi_dataset(paths=None):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.WARNING, format='%(levelname)-8s [%(filename)s:%(lineno)d] %(message)s')
 
-    # paths = ["/home/mihailo/tmp/ANL_logs/ANL-ALCF-DARSHAN-THETA_20170701_20171231.csv", 
-             # "/home/mihailo/tmp/ANL_logs/ANL-ALCF-DARSHAN-THETA_20180101_20181231.csv", 
-             # "/home/mihailo/tmp/ANL_logs/ANL-ALCF-DARSHAN-THETA_20190101_20191231.csv", 
-             # "/home/mihailo/tmp/ANL_logs/ANL-ALCF-DARSHAN-THETA_20200101_20200531.csv"]
+    clusterer = hdbscan.HDBSCAN(min_samples=10, cluster_selection_epsilon=5, metric='manhattan', gen_min_span_tree=True)
+    clusterer.fit(df[log_columns])
+
+    return df, clusterer
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.WARNING, format='%(levelname)-8s [%(filename)s:%(lineno)d] %(message)s')
 
     df, clusterer = mpi_dataset(glob.glob("/home/mihailo/tmp/ANL_logs/ANL-ALCF-DARSHAN-THETA_*.csv"))
