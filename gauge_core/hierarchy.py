@@ -211,7 +211,7 @@ def tree_layout(G, min_yaxis_spacing=0.5, layout_type='middle'):
 
 
 @memory.cache
-def build_hierarchy(df, clusterer, min_cluster_size=1000, layout_type='middle'):
+def build_hierarchy(df, clusterer, min_epsilon=1, min_cluster_size=1000, layout_type='middle'):
     """
     Returns a dictionary with a single field nodes, which contains 
     a list of node objects. Each element of the list contains the fields
@@ -236,7 +236,7 @@ def build_hierarchy(df, clusterer, min_cluster_size=1000, layout_type='middle'):
     root = [n for n, d in G.in_degree() if d==0][0]
     _populate_users_and_apps(df, G, root)
 
-    CG = build_condensed_graph(G, 1., min_cluster_size=min_cluster_size)
+    CG = build_condensed_graph(G, min_epsilon=min_epsilon, min_cluster_size=min_cluster_size)
     coord = tree_layout(CG, layout_type=layout_type)
     sizes = dict(nx.get_node_attributes(CG, 'size').items())
 
