@@ -2,6 +2,7 @@ build/
 dist/
 data/
 *.swp
+*.swo
 .cache/
 __pycache__/
 gauge_core.egg-info/
